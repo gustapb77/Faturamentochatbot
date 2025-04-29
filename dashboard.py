@@ -61,8 +61,8 @@ PACOTES = {
 }
 
 # URLs das imagens (substitua pelos seus links do ImgBB)
-LOGO_URL = "https://i.ibb.co/0jQ4Z8T/gold-pepper-logo.png"  # Logo principal (sidebar)
-LOGO_MINI_URL = "https://i.ibb.co/4Y8LZ9T/gold-pepper-mini.png"  # Logo pequena (notificações)
+LOGO_URL = "hthttps://i.ibb.co/gLGXRBns/18273b-600-x-120-px-2500-x-590-px-400-x-400-px-2.png"  # Logo principal (sidebar)
+LOGO_MINI_URL = "https://i.ibb.co/bxdfpWx/Logo-Card-Golden-Papper.png"  # Logo pequena (notificações)
 
 # ======================================
 # FUNÇÕES PRINCIPAIS
