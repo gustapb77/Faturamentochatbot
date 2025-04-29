@@ -15,7 +15,7 @@ st.set_page_config(
     page_title="Dashboard de Vendas - Paloma Premium",
     page_icon="💎",
     menu_items={
-        'About': "Dashboard de vendas em tempo real - Versão 2.0"
+        'About': "Dashboard de vendas em tempo real - Versão 2.1 (Otimizado)"
     }
 )
 
@@ -75,21 +75,92 @@ def gerar_transacao():
         "Cor": info["cor"]
     }
 
+def inicializar_dados():
+    """Inicializa os dados no session_state"""
+    if 'dados' not in st.session_state:
+        vendas_atuais = {pacote: info["vendas_iniciais"] for pacote, info in PACOTES.items()}
+        
+        # Gráfico 1: Progressão de Vendas
+        df1 = pd.DataFrame({
+            "Pacote": vendas_atuais.keys(),
+            "Vendas": vendas_atuais.values(),
+            "Cor": [PACOTES[p]["cor"] for p in vendas_atuais]
+        })
+        
+        fig1 = px.line(df1, x="Pacote", y="Vendas", color="Pacote",
+                      color_discrete_map=CORES, markers=True,
+                      title="Progressão de Vendas por Pacote")
+        fig1.update_traces(line=dict(width=4))
+        
+        # Gráfico 2: Metas vs Realizado
+        df2 = pd.DataFrame([
+            {"Pacote": p, "Tipo": "Meta", "Valor": PACOTES[p]["meta"]} for p in PACOTES
+        ] + [
+            {"Pacote": p, "Tipo": "Realizado", "Valor": vendas_atuais[p]} for p in PACOTES
+        ])
+        
+        fig2 = px.bar(df2, x="Pacote", y="Valor", color="Pacote",
+                     barmode="group", color_discrete_map=CORES,
+                     title="Metas vs Realizado")
+        fig2.update_layout(showlegend=False)
+        
+        st.session_state.dados = {
+            'vendas_atuais': vendas_atuais,
+            'ultimas_vendas': [],
+            'fig1': fig1,
+            'fig2': fig2,
+            'pausado': False,
+            'velocidade': 3
+        }
+
 # ======================================
 # INTERFACE PRINCIPAL
 # ======================================
 def main():
+    inicializar_dados()
+    
     # Barra lateral
     with st.sidebar:
         st.image("https://i.ibb.co/ks5CNrDn/IMG-9256.jpg", width=200)
         st.title("Painel de Controle")
-        velocidade = st.slider("Velocidade de atualização", 1, 10, 3)
+        
+        # Controle de velocidade
+        nova_velocidade = st.slider(
+            "Velocidade de atualização", 1, 10, 
+            st.session_state.dados['velocidade'],
+            key='velocidade_slider'
+        )
+        
+        # Botões de controle
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button('⏸️ Pausar' if not st.session_state.dados['pausado'] else '▶️ Continuar'):
+                st.session_state.dados['pausado'] = not st.session_state.dados['pausado']
+        with col2:
+            if st.button('🔄 Reiniciar'):
+                inicializar_dados()
+        
         st.markdown("---")
         st.markdown("### Metas Mensais")
         for pacote, info in PACOTES.items():
             st.markdown(
                 f"<div style='color:{info['cor']}; font-weight:bold; margin: 5px 0;'>"
                 f"◉ {pacote}: {info['meta']} assinaturas"
+                f"</div>",
+                unsafe_allow_html=True
+            )
+        
+        # Exibir conversão atual
+        st.markdown("---")
+        st.markdown("### Conversão Atual")
+        for pacote in PACOTES:
+            conversao = (st.session_state.dados['vendas_atuais'][pacote] / PACOTES[pacote]["meta"]) * 100
+            cor = "#00FF00" if conversao >= 100 else "#FF0000"
+            st.markdown(
+                f"<div style='margin: 8px 0;'>"
+                f"<span style='font-weight:bold;'>{pacote}:</span> "
+                f"<span style='color:{cor}; font-weight:bold;'>{conversao:.1f}%</span> "
+                f"({st.session_state.dados['vendas_atuais'][pacote]}/{PACOTES[pacote]['meta']})"
                 f"</div>",
                 unsafe_allow_html=True
             )
@@ -132,10 +203,6 @@ def main():
     st.markdown("---")
     chart_col1, chart_col2 = st.columns([3, 2])
     
-    # Dados iniciais
-    vendas_atuais = {pacote: info["vendas_iniciais"] for pacote, info in PACOTES.items()}
-    ultimas_vendas = []
-
     # Containers fixos
     chart1_placeholder = chart_col1.empty()
     chart2_placeholder = chart_col2.empty()
@@ -146,71 +213,48 @@ def main():
     # ======================================
     while True:
         try:
-            # Atualizar dados com progressão lógica
-            for pacote in vendas_atuais:
-                vendas_atuais[pacote] = gerar_progressao_vendas(vendas_atuais[pacote])
+            # Atualizar velocidade se mudou
+            if nova_velocidade != st.session_state.dados['velocidade']:
+                st.session_state.dados['velocidade'] = nova_velocidade
             
-            # Gráfico 1: Progressão de Vendas
-            with chart1_placeholder:
-                df = pd.DataFrame({
-                    "Pacote": vendas_atuais.keys(),
-                    "Vendas": vendas_atuais.values(),
-                    "Cor": [PACOTES[p]["cor"] for p in vendas_atuais]
-                })
+            if not st.session_state.dados['pausado']:
+                # Atualizar dados com progressão lógica
+                for pacote in st.session_state.dados['vendas_atuais']:
+                    st.session_state.dados['vendas_atuais'][pacote] = gerar_progressao_vendas(
+                        st.session_state.dados['vendas_atuais'][pacote]
+                    )
                 
-                fig = px.line(
-                    df,
-                    x="Pacote",
-                    y="Vendas",
-                    color="Pacote",
-                    color_discrete_map=CORES,
-                    markers=True,
-                    title="Progressão de Vendas por Pacote",
-                    labels={"Vendas": "Total de Vendas", "Pacote": ""}
+                # Gerar nova transação
+                nova_venda = gerar_transacao()
+                st.session_state.dados['ultimas_vendas'].insert(0, nova_venda)
+                st.session_state.dados['ultimas_vendas'] = st.session_state.dados['ultimas_vendas'][:8]
+                
+                # Notificação de nova venda
+                st.toast(
+                    f"✅ Nova venda: {nova_venda['Nome']} - {nova_venda['Pacote']}",
+                    icon="🎉"
                 )
-                fig.update_traces(line=dict(width=4))
-                st.plotly_chart(fig, use_container_width=True)
             
-            # Gráfico 2: Metas vs Realizado
-            with chart2_placeholder:
-                df_metas = pd.DataFrame([
-                    {
-                        "Pacote": p,
-                        "Tipo": "Meta",
-                        "Valor": PACOTES[p]["meta"],
-                        "Cor": PACOTES[p]["cor"]
-                    } for p in PACOTES
-                ] + [
-                    {
-                        "Pacote": p,
-                        "Tipo": "Realizado",
-                        "Valor": vendas_atuais[p],
-                        "Cor": PACOTES[p]["cor"]
-                    } for p in PACOTES
-                ])
-                
-                fig = px.bar(
-                    df_metas,
-                    x="Pacote",
-                    y="Valor",
-                    color="Pacote",
-                    barmode="group",
-                    color_discrete_map=CORES,
-                    title="Metas vs Realizado",
-                    labels={"Valor": "Quantidade", "Pacote": ""}
+            # Atualizar gráficos (mesmo quando pausado)
+            with chart1_placeholder.container():
+                # Atualiza apenas os dados do gráfico 1
+                st.session_state.dados['fig1'].data[0].y = list(st.session_state.dados['vendas_atuais'].values())
+                st.session_state.dados['fig1'].update_layout(
+                    title=f"Progressão de Vendas - {datetime.now().strftime('%H:%M:%S')}"
                 )
-                fig.update_layout(showlegend=False)
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(st.session_state.dados['fig1'], use_container_width=True)
+            
+            with chart2_placeholder.container():
+                # Atualiza apenas os dados realizados no gráfico 2
+                for i, p in enumerate(PACOTES):
+                    st.session_state.dados['fig2'].data[i+len(PACOTES)].y = [st.session_state.dados['vendas_atuais'][p]]
+                st.plotly_chart(st.session_state.dados['fig2'], use_container_width=True)
             
             # Últimas Vendas
-            with vendas_placeholder:
+            with vendas_placeholder.container():
                 st.markdown("### 🛒 Últimas Vendas em Tempo Real")
                 
-                nova_venda = gerar_transacao()
-                ultimas_vendas.insert(0, nova_venda)
-                ultimas_vendas = ultimas_vendas[:8]  # Manter apenas as 8 últimas
-                
-                for venda in ultimas_vendas:
+                for venda in st.session_state.dados['ultimas_vendas']:
                     st.markdown(f"""
                     <div style="
                         background: rgba(30, 0, 51, 0.2);
@@ -232,17 +276,12 @@ def main():
                     </div>
                     """, unsafe_allow_html=True)
             
-            # Notificação de nova venda
-            st.toast(
-                f"✅ Nova venda: {nova_venda['Nome']} - {nova_venda['Pacote']}",
-                icon="🎉"
-            )
-            
-            time.sleep(velocidade)
+            time.sleep(st.session_state.dados['velocidade'])
             
         except Exception as e:
             st.error(f"Erro no sistema: {str(e)}")
             time.sleep(5)
+            continue
 
 if __name__ == "__main__":
     main()
