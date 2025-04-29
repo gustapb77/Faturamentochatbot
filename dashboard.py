@@ -1,4 +1,18 @@
-import streamlit as st
+import os, subprocess, sys
+
+# Instalação forçada de dependências
+if not os.path.exists('/mount'):
+    print("Instalando dependências...")
+    subprocess.run([sys.executable, "-m", "pip", "install", "--user", "-r", "requirements.txt"], check=True)
+
+# Verificação dos imports
+try:
+    import plotly.express as px
+except ImportError:
+    print("Plotly não encontrado - instalando...")
+    subprocess.run([sys.executable, "-m", "pip", "install", "plotly==5.15.0"], check=True)
+    import plotly.express as pximport streamlit as st
+    
 import pandas as pd
 import numpy as np
 import time
