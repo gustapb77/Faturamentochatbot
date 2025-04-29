@@ -1,5 +1,6 @@
-streamlit>=1.28.0
-pandas>=2.0.3
-numpy>=1.24.3
-plotly>=5.15.0
-faker>=18.11.2
+--extra-index-url https://pypi.org/simple/
+streamlit==1.28.0
+pandas==2.0.3
+numpy==1.24.3
+plotly==5.15.0
+Faker==18.11.2
