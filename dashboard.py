@@ -6,6 +6,9 @@ import random
 from datetime import datetime, timedelta
 import plotly.express as px
 from faker import Faker
+from PIL import Image
+import requests
+from io import BytesIO
 
 # ======================================
 # CONFIGURAÇÕES INICIAIS
@@ -25,16 +28,16 @@ fake = Faker('pt_BR')
 # CONSTANTES E CONFIGURAÇÕES
 # ======================================
 CORES = {
-    "PRIMARIA": "#18273b",       # Azul escuro corporativo
-    "SECUNDARIA": "#e0c083",     # Dourado Gold Pepper
-    "TERCIARIA": "#828993",      # Cinza metálico
-    "TEXTO": "#ffffff",          # Branco para texto
-    "FUNDO": "#0e1117",          # Fundo escuro
-    "CARDS": "#1a2230",          # Cards escuros
-    "DESTAQUE": "#e0c083"        # Dourado para destaques
+    "PRIMARIA": "#18273b",
+    "SECUNDARIA": "#e0c083",
+    "TERCIARIA": "#828993",
+    "TEXTO": "#ffffff",
+    "FUNDO": "#0e1117",
+    "CARDS": "#1a2230",
+    "DESTAQUE": "#e0c083"
 }
 
-FATURAMENTO_MENSAL = 8247358.90  # Valor atualizado
+FATURAMENTO_MENSAL = 8247358.90
 
 PACOTES = {
     "BASIC": {
@@ -42,54 +45,66 @@ PACOTES = {
         "meta": 18000,
         "cor": CORES["TERCIARIA"],
         "vendas_iniciais": 15000,
-        "comissao": 0.4  # 40% de comissão
+        "comissao": 0.4
     },
     "GOLD": {
         "preco": 129.90,
         "meta": 10000,
         "cor": CORES["SECUNDARIA"],
         "vendas_iniciais": 8500,
-        "comissao": 0.5  # 50% de comissão
+        "comissao": 0.5
     },
     "PREMIUM": {
         "preco": 249.90,
         "meta": 6000,
         "cor": CORES["PRIMARIA"],
         "vendas_iniciais": 5500,
-        "comissao": 0.6  # 60% de comissão
+        "comissao": 0.6
     }
 }
 
-# URLs das imagens (substitua pelos seus links do ImgBB)
-LOGO_URL = "https://i.ibb.co/SXmN2qzD/Logo-Card-Golden-Papper-1.png"  # Logo principal (sidebar)
-LOGO_MINI_URL = "https://i.ibb.co/SXmN2qzD/Logo-Card-Golden-Papper-1.png"  # Logo pequena (notificações)
+# URLs das imagens
+LOGO_URL = "https://i.ibb.co/SXmN2qzD/Logo-Card-Golden-Papper-1.png"
+LOGO_MINI_URL = "https://i.ibb.co/SXmN2qzD/Logo-Card-Golden-Papper-1.png"
+
+# Carregar a logo em base64 para usar nas notificações
+def carregar_imagem_base64(url):
+    response = requests.get(url)
+    img = Image.open(BytesIO(response.content))
+    
+    # Redimensionar para o tamanho de notificação (24x24)
+    img = img.resize((24, 24))
+    
+    from base64 import b64encode
+    buffered = BytesIO()
+    img.save(buffered, format="PNG")
+    return b64encode(buffered.getvalue()).decode("utf-8")
+
+LOGO_MINI_BASE64 = carregar_imagem_base64(LOGO_MINI_URL)
 
 # ======================================
 # FUNÇÕES PRINCIPAIS
 # ======================================
 def gerar_progressao_vendas(valor_atual):
-    """Gera um aumento realista baseado no valor atual"""
     if valor_atual == 0:
         return random.randint(1, 5)
-    incremento = random.uniform(0.005, 0.02)  # 0.5% a 2%
+    incremento = random.uniform(0.005, 0.02)
     return int(valor_atual * (1 + incremento))
 
 def gerar_transacao():
-    """Gera uma transação fictícia com dados realistas"""
     pacote, info = random.choice(list(PACOTES.items()))
     valor_base = info["preco"]
     comissao = valor_base * info["comissao"]
     
-    # 7% de chance de ser uma venda especial (pimenta dourada)
     if random.random() < 0.07:
-        valor = valor_base * random.uniform(1.5, 3)  # Venda premium
+        valor = valor_base * random.uniform(1.5, 3)
         comissao = valor * info["comissao"]
         mensagem = "🔥 Venda Premium!"
-        icon = "🚀"
+        icon = None  # Usaremos nossa própria logo
     else:
         valor = valor_base
         mensagem = "✅ Venda Realizada!"
-        icon = "🛒"
+        icon = None
     
     return {
         "Nome": fake.name(),
@@ -104,16 +119,13 @@ def gerar_transacao():
     }
 
 def gerar_historico_faturamento(dias=30):
-    """Gera histórico de faturamento fictício"""
     base = FATURAMENTO_MENSAL / 30
     return [base * random.uniform(0.85, 1.25) for _ in range(dias)]
 
 def inicializar_dados():
-    """Inicializa os dados no session_state"""
     if 'dados' not in st.session_state:
         vendas_atuais = {pacote: info["vendas_iniciais"] for pacote, info in PACOTES.items()}
         
-        # Gráfico 1: Progressão de Vendas
         df1 = pd.DataFrame({
             "Pacote": list(vendas_atuais.keys()),
             "Vendas": list(vendas_atuais.values()),
@@ -125,7 +137,6 @@ def inicializar_dados():
                       markers=True, title="Progressão de Vendas por Pacote")
         fig1.update_traces(line=dict(width=3))
         
-        # Gráfico 2: Metas vs Realizado
         df2 = pd.DataFrame([
             {"Pacote": p, "Tipo": "Meta", "Valor": PACOTES[p]["meta"]} for p in PACOTES
         ] + [
@@ -137,7 +148,6 @@ def inicializar_dados():
                      title="Metas vs Realizado")
         fig2.update_layout(showlegend=False)
         
-        # Gráfico 3: Faturamento Histórico
         datas = [(datetime.now() - timedelta(days=x)).strftime('%d/%m') for x in range(30)][::-1]
         fig3 = px.area(
             pd.DataFrame({
@@ -168,10 +178,8 @@ def inicializar_dados():
 # INTERFACE PRINCIPAL
 # ======================================
 def main():
-    # CSS Personalizado para notificações
     st.markdown(f"""
     <style>
-        /* Estilo das notificações */
         .notificacao {{
             background: {CORES['CARDS']} !important;
             border-left: 4px solid {CORES['SECUNDARIA']} !important;
@@ -191,6 +199,9 @@ def main():
             width: 24px;
             height: 24px;
             margin-right: 10px;
+            background-image: url('data:image/png;base64,{LOGO_MINI_BASE64}');
+            background-size: contain;
+            background-repeat: no-repeat;
         }}
         .notificacao-tempo {{
             margin-left: auto;
@@ -206,8 +217,6 @@ def main():
             font-size: 0.9em;
             color: {CORES['TERCIARIA']};
         }}
-        
-        /* Estilo geral */
         .stApp {{
             background-color: {CORES['FUNDO']};
             color: {CORES['TEXTO']};
@@ -265,7 +274,6 @@ def main():
         </div>
         """, unsafe_allow_html=True)
         
-        # Filtros
         st.markdown("### 🔍 Filtros")
         intervalo = st.select_slider(
             "Período de Análise",
@@ -274,14 +282,12 @@ def main():
             key="intervalo_filtro"
         )
         
-        # Controle de velocidade
         st.session_state.dados['velocidade'] = st.slider(
             "Velocidade de atualização", 1, 10, 
             st.session_state.dados['velocidade'],
             key='velocidade_slider'
         )
         
-        # Botões de controle
         col1, col2 = st.columns(2)
         with col1:
             if st.button('⏸️ Pausar' if not st.session_state.dados['pausado'] else '▶️ Continuar',
@@ -302,7 +308,6 @@ def main():
                 unsafe_allow_html=True
             )
         
-        # Exibir conversão atual
         st.markdown("---")
         st.markdown(f"### 📊 Conversão Atual")
         for pacote in PACOTES:
@@ -320,7 +325,7 @@ def main():
     # Cabeçalho principal com logo
     st.markdown(f"""
     <div style="display: flex; align-items: center; margin-bottom: 20px;">
-        <img src="{LOGO_MINI_URL}" style="height: 28px; margin-right: 10px;">
+        <img src="{LOGO_URL}" style="height: 28px; margin-right: 10px;">
         <h1 style="margin: 0; color: {CORES['SECUNDARIA']};">Dashboard de Vendas</h1>
         <span style="margin-left: auto; color: {CORES['TERCIARIA']}; font-size: 0.9em;">
             Atualizado em: {datetime.now().strftime('%d/%m/%Y %H:%M')}
@@ -405,7 +410,7 @@ def main():
                     f"""
                     <div class="notificacao">
                         <div class="notificacao-header">
-                            <img src="{LOGO_MINI_URL}" class="notificacao-logo">
+                            <div class="notificacao-logo"></div>
                             <span>{nova_venda["Mensagem"]}</span>
                             <span class="notificacao-tempo">agora</span>
                         </div>
@@ -413,12 +418,11 @@ def main():
                         <div class="notificacao-comissao">Sua comissão: R$ {nova_venda["Comissao"]:,.2f}</div>
                     </div>
                     """,
-                    icon=nova_venda["Icone"]
+                    icon=None  # Removemos o ícone padrão para usar nossa logo
                 )
             
             # Atualizar gráficos (mesmo quando pausado)
             with chart1_placeholder.container():
-                # Atualiza apenas os dados do gráfico 1
                 st.session_state.dados['fig1'].data[0].y = list(st.session_state.dados['vendas_atuais'].values())
                 st.session_state.dados['fig1'].update_layout(
                     title=f"Progressão de Vendas - {datetime.now().strftime('%H:%M')}",
@@ -430,7 +434,6 @@ def main():
                 st.plotly_chart(st.session_state.dados['fig1'], use_container_width=True)
             
             with chart2_placeholder.container():
-                # Recria o gráfico 2 completamente
                 df2 = pd.DataFrame([
                     {"Pacote": p, "Tipo": "Meta", "Valor": PACOTES[p]["meta"]} for p in PACOTES
                 ] + [
@@ -450,7 +453,6 @@ def main():
                 st.session_state.dados['fig2'] = fig2
                 st.plotly_chart(fig2, use_container_width=True)
             
-            # Gráfico de faturamento histórico
             with chart3_placeholder.container():
                 st.session_state.dados['fig3'].update_layout(
                     title=f"Faturamento Histórico - {st.session_state.get('intervalo_filtro', '30 dias')}",
@@ -463,7 +465,6 @@ def main():
                 )
                 st.plotly_chart(st.session_state.dados['fig3'], use_container_width=True)
             
-            # Últimas Vendas
             with vendas_placeholder.container():
                 st.markdown(f"""
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
