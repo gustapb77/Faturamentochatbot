@@ -15,7 +15,7 @@ st.set_page_config(
     page_title="Dashboard de Vendas - Paloma Premium",
     page_icon="💎",
     menu_items={
-        'About': "Dashboard de vendas em tempo real - Versão 2.1 (Otimizado)"
+        'About': "Dashboard de vendas em tempo real - Versão 2.2 (Corrigido)"
     }
 )
 
@@ -82,8 +82,8 @@ def inicializar_dados():
         
         # Gráfico 1: Progressão de Vendas
         df1 = pd.DataFrame({
-            "Pacote": vendas_atuais.keys(),
-            "Vendas": vendas_atuais.values(),
+            "Pacote": list(vendas_atuais.keys()),
+            "Vendas": list(vendas_atuais.values()),
             "Cor": [PACOTES[p]["cor"] for p in vendas_atuais]
         })
         
@@ -110,7 +110,8 @@ def inicializar_dados():
             'fig1': fig1,
             'fig2': fig2,
             'pausado': False,
-            'velocidade': 3
+            'velocidade': 3,
+            'vendas_hoje': random.randint(80, 120)
         }
 
 # ======================================
@@ -125,7 +126,7 @@ def main():
         st.title("Painel de Controle")
         
         # Controle de velocidade
-        nova_velocidade = st.slider(
+        st.session_state.dados['velocidade'] = st.slider(
             "Velocidade de atualização", 1, 10, 
             st.session_state.dados['velocidade'],
             key='velocidade_slider'
@@ -139,6 +140,7 @@ def main():
         with col2:
             if st.button('🔄 Reiniciar'):
                 inicializar_dados()
+                st.rerun()
         
         st.markdown("---")
         st.markdown("### Metas Mensais")
@@ -185,7 +187,6 @@ def main():
         """, unsafe_allow_html=True)
     
     with col2:
-        vendas_hoje = random.randint(80, 120)
         st.markdown(f"""
         <div style="
             background: rgba(30, 0, 51, 0.3);
@@ -195,7 +196,7 @@ def main():
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         ">
             <h3 style="margin-top:0; color:#ff66b3;">Vendas Hoje</h3>
-            <h1 style="margin:0; color:#ff66b3; font-size:2.5em;">{vendas_hoje}</h1>
+            <h1 style="margin:0; color:#ff66b3; font-size:2.5em;">{st.session_state.dados['vendas_hoje']}</h1>
         </div>
         """, unsafe_allow_html=True)
 
@@ -213,16 +214,15 @@ def main():
     # ======================================
     while True:
         try:
-            # Atualizar velocidade se mudou
-            if nova_velocidade != st.session_state.dados['velocidade']:
-                st.session_state.dados['velocidade'] = nova_velocidade
-            
             if not st.session_state.dados['pausado']:
                 # Atualizar dados com progressão lógica
                 for pacote in st.session_state.dados['vendas_atuais']:
                     st.session_state.dados['vendas_atuais'][pacote] = gerar_progressao_vendas(
                         st.session_state.dados['vendas_atuais'][pacote]
                     )
+                
+                # Atualizar vendas do dia
+                st.session_state.dados['vendas_hoje'] += random.randint(1, 3)
                 
                 # Gerar nova transação
                 nova_venda = gerar_transacao()
@@ -245,10 +245,19 @@ def main():
                 st.plotly_chart(st.session_state.dados['fig1'], use_container_width=True)
             
             with chart2_placeholder.container():
-                # Atualiza apenas os dados realizados no gráfico 2
-                for i, p in enumerate(PACOTES):
-                    st.session_state.dados['fig2'].data[i+len(PACOTES)].y = [st.session_state.dados['vendas_atuais'][p]]
-                st.plotly_chart(st.session_state.dados['fig2'], use_container_width=True)
+                # Recria o gráfico 2 completamente (solução mais segura)
+                df2 = pd.DataFrame([
+                    {"Pacote": p, "Tipo": "Meta", "Valor": PACOTES[p]["meta"]} for p in PACOTES
+                ] + [
+                    {"Pacote": p, "Tipo": "Realizado", "Valor": st.session_state.dados['vendas_atuais'][p]} for p in PACOTES
+                ])
+                
+                fig2 = px.bar(df2, x="Pacote", y="Valor", color="Pacote",
+                             barmode="group", color_discrete_map=CORES,
+                             title=f"Metas vs Realizado - {datetime.now().strftime('%H:%M:%S')}")
+                fig2.update_layout(showlegend=False)
+                st.session_state.dados['fig2'] = fig2
+                st.plotly_chart(fig2, use_container_width=True)
             
             # Últimas Vendas
             with vendas_placeholder.container():
