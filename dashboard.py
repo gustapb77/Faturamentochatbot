@@ -58,7 +58,7 @@ def generate_historical_data(days=90):
         for pacote, info in PACOTES.items():
             vendas = random.randint(5, 30)
             data.append({
-                "Data": single_date.strftime("%Y-%m-%d"),  # Como string para evitar problemas
+                "Data": single_date.strftime("%Y-%m-%d"),
                 "Pacote": pacote,
                 "Vendas": vendas,
                 "Faturamento": vendas * info["preco"],
@@ -100,17 +100,18 @@ def main():
                 delta=f"Meta: {info['meta']} assin."
             )
     
-    # KPIs em tempo real
+    # Containers FIXOS (fora do loop)
     col1, col2, col3 = st.columns(3)
-    with col1:
-        kpi1 = st.empty()
-    with col2:
-        kpi2 = st.empty()
-    with col3:
-        kpi3 = st.empty()
-    
-    # Gráficos principais
     chart_col1, chart_col2 = st.columns([3, 2])
+    sales_container = st.container()
+    
+    # Inicializa containers vazios
+    kpi1 = col1.empty()
+    kpi2 = col2.empty()
+    kpi3 = col3.empty()
+    chart1_placeholder = chart_col1.empty()
+    chart2_placeholder = chart_col2.empty()
+    sales_placeholder = sales_container.empty()
     
     # Dados iniciais
     df_historico = generate_historical_data()
@@ -122,32 +123,29 @@ def main():
     while True:
         try:
             # Atualizar KPIs
-            with col1:
-                with kpi1.container():
-                    st.metric(
-                        label="Vendas Hoje",
-                        value=random.randint(80, 120),
-                        delta=f"+{random.randint(3, 8)}%"
-                    )
+            with kpi1:
+                st.metric(
+                    label="Vendas Hoje",
+                    value=random.randint(80, 120),
+                    delta=f"+{random.randint(3, 8)}%"
+                )
             
-            with col2:
-                with kpi2.container():
-                    st.metric(
-                        label="Faturamento Diário",
-                        value=f"R$ {random.randint(15000, 30000):,}".replace(",", "X").replace(".", ",").replace("X", "."),
-                        delta=f"+{random.randint(2, 7)}%"
-                    )
+            with kpi2:
+                st.metric(
+                    label="Faturamento Diário",
+                    value=f"R$ {random.randint(15000, 30000):,}".replace(",", "X").replace(".", ",").replace("X", "."),
+                    delta=f"+{random.randint(2, 7)}%"
+                )
             
-            with col3:
-                with kpi3.container():
-                    st.metric(
-                        label="Novos Clientes",
-                        value=random.randint(20, 50),
-                        delta=f"+{random.randint(1, 5)}%"
-                    )
+            with kpi3:
+                st.metric(
+                    label="Novos Clientes",
+                    value=random.randint(20, 50),
+                    delta=f"+{random.randint(1, 5)}%"
+                )
             
             # Gráfico 1: Faturamento Mensal
-            with chart_col1:
+            with chart1_placeholder:
                 st.markdown("### 📈 Faturamento Mensal")
                 df_mensal = df_historico.copy()
                 df_mensal['Data'] = pd.to_datetime(df_mensal['Data'])
@@ -161,11 +159,10 @@ def main():
                     labels={"Faturamento": "Faturamento (R$)", "Data": "Mês"},
                     template="plotly_white"
                 )
-                fig1.update_layout(hovermode="x unified")
                 st.plotly_chart(fig1, use_container_width=True)
             
-            # Gráfico 2: Distribuição de Vendas (CORRIGIDO)
-            with chart_col2:
+            # Gráfico 2: Distribuição de Vendas
+            with chart2_placeholder:
                 st.markdown("### 📊 Distribuição de Vendas")
                 df_distribuicao = df_historico.groupby('Pacote').agg({
                     'Vendas': 'sum',
@@ -179,26 +176,23 @@ def main():
                     hole=0.4,
                     color='Pacote',
                     color_discrete_map={k: v["cor"] for k, v in PACOTES.items()},
-                    labels={'Vendas': 'Total de Vendas'},
                     hover_data=['Faturamento']
                 )
                 fig2.update_traces(
                     textposition='inside',
-                    textinfo='percent+label',
-                    hovertemplate="<b>%{label}</b><br>Vendas: %{value}<br>Faturamento: R$ %{customdata[0]:,.2f}"
+                    textinfo='percent+label'
                 )
                 st.plotly_chart(fig2, use_container_width=True)
             
             # Últimas vendas (Tempo Real)
-            st.markdown("### 🛒 Últimas Vendas (Tempo Real)")
-            sales_container = st.empty()
-            
-            # Gerar e exibir nova venda
-            nova_venda = generate_transaction()
-            ultimas_vendas.insert(0, nova_venda)
-            ultimas_vendas = ultimas_vendas[:10]  # Manter apenas as 10 últimas
-            
-            with sales_container.container():
+            with sales_placeholder:
+                st.markdown("### 🛒 Últimas Vendas (Tempo Real)")
+                
+                # Gerar nova venda
+                nova_venda = generate_transaction()
+                ultimas_vendas.insert(0, nova_venda)
+                ultimas_vendas = ultimas_vendas[:10]  # Manter apenas as 10 últimas
+                
                 for venda in ultimas_vendas:
                     with st.container():
                         cols = st.columns([2, 2, 1, 1])
