@@ -9,14 +9,15 @@ from faker import Faker
 from PIL import Image
 import requests
 from io import BytesIO
+import base64
 
 # ======================================
 # CONFIGURAÇÕES INICIAIS
 # ======================================
 st.set_page_config(
     layout="wide",
-    page_title="Dashboard Gold Pepper",
-    page_icon="🌶️",
+    page_title="Gold Pepper - Dashboard",
+    page_icon="🌶️",  # Será substituído pela logo
     menu_items={
         'About': "Dashboard de vendas em tempo real - Versão Premium"
     }
@@ -27,14 +28,47 @@ fake = Faker('pt_BR')
 # ======================================
 # CONSTANTES E CONFIGURAÇÕES
 # ======================================
-CORES = {
-    "PRIMARIA": "#18273b",
-    "SECUNDARIA": "#e0c083",
-    "TERCIARIA": "#828993",
-    "TEXTO": "#ffffff",
-    "FUNDO": "#0e1117",
-    "CARDS": "#1a2230",
-    "DESTAQUE": "#e0c083"
+# URLs das imagens
+LOGO_CARD_URL = "https://i.ibb.co/SXmN2qzD/Logo-Card-Golden-Papper-1.png"
+LOGO_ICONE_URL = "https://i.ibb.co/gLGXRBns/18273b-600-x-120-px-2500-x-590-px-400-x-400-px-2.png"
+
+# Carregar imagens em base64
+def carregar_imagem_base64(url, size=None):
+    response = requests.get(url)
+    img = Image.open(BytesIO(response.content))
+    if size:
+        img = img.resize(size)
+    buffered = BytesIO()
+    img.save(buffered, format="PNG")
+    return base64.b64encode(buffered.getvalue()).decode("utf-8")
+
+# Tamanhos das imagens
+LOGO_CARD_BASE64 = carregar_imagem_base64(LOGO_CARD_URL, (24, 24))
+LOGO_ICONE_BASE64 = carregar_imagem_base64(LOGO_ICONE_URL, (32, 32))
+FAVICON_BASE64 = carregar_imagem_base64(LOGO_ICONE_URL, (32, 32))
+
+# Cores e temas
+TEMAS = {
+    "DARK": {
+        "PRIMARIA": "#18273b",
+        "SECUNDARIA": "#e0c083",
+        "TERCIARIA": "#828993",
+        "TEXTO": "#ffffff",
+        "FUNDO": "#0e1117",
+        "CARDS": "#1a2230",
+        "DESTAQUE": "#e0c083",
+        "BORDA": "rgba(224, 192, 131, 0.2)"
+    },
+    "LIGHT": {
+        "PRIMARIA": "#18273b",
+        "SECUNDARIA": "#e0c083",
+        "TERCIARIA": "#6c757d",
+        "TEXTO": "#343a40",
+        "FUNDO": "#f8f9fa",
+        "CARDS": "#ffffff",
+        "DESTAQUE": "#e0c083",
+        "BORDA": "rgba(24, 39, 59, 0.1)"
+    }
 }
 
 FATURAMENTO_MENSAL = 8247358.90
@@ -43,44 +77,25 @@ PACOTES = {
     "BASIC": {
         "preco": 59.90,
         "meta": 18000,
-        "cor": CORES["TERCIARIA"],
+        "cor": "#828993",  # Usando cores fixas para manter consistência
         "vendas_iniciais": 15000,
         "comissao": 0.4
     },
     "GOLD": {
         "preco": 129.90,
         "meta": 10000,
-        "cor": CORES["SECUNDARIA"],
+        "cor": "#e0c083",
         "vendas_iniciais": 8500,
         "comissao": 0.5
     },
     "PREMIUM": {
         "preco": 249.90,
         "meta": 6000,
-        "cor": CORES["PRIMARIA"],
+        "cor": "#18273b",
         "vendas_iniciais": 5500,
         "comissao": 0.6
     }
 }
-
-# URLs das imagens
-LOGO_URL = "https://i.ibb.co/SXmN2qzD/Logo-Card-Golden-Papper-1.png"
-LOGO_MINI_URL = "https://i.ibb.co/SXmN2qzD/Logo-Card-Golden-Papper-1.png"
-
-# Carregar a logo em base64 para usar nas notificações
-def carregar_imagem_base64(url):
-    response = requests.get(url)
-    img = Image.open(BytesIO(response.content))
-    
-    # Redimensionar para o tamanho de notificação (24x24)
-    img = img.resize((24, 24))
-    
-    from base64 import b64encode
-    buffered = BytesIO()
-    img.save(buffered, format="PNG")
-    return b64encode(buffered.getvalue()).decode("utf-8")
-
-LOGO_MINI_BASE64 = carregar_imagem_base64(LOGO_MINI_URL)
 
 # ======================================
 # FUNÇÕES PRINCIPAIS
@@ -100,11 +115,9 @@ def gerar_transacao():
         valor = valor_base * random.uniform(1.5, 3)
         comissao = valor * info["comissao"]
         mensagem = "🔥 Venda Premium!"
-        icon = None  # Usaremos nossa própria logo
     else:
         valor = valor_base
         mensagem = "✅ Venda Realizada!"
-        icon = None
     
     return {
         "Nome": fake.name(),
@@ -114,8 +127,7 @@ def gerar_transacao():
         "Hora": datetime.now().strftime("%H:%M:%S"),
         "Local": fake.city(),
         "Cor": info["cor"],
-        "Mensagem": mensagem,
-        "Icone": icon
+        "Mensagem": mensagem
     }
 
 def gerar_historico_faturamento(dias=30):
@@ -134,7 +146,7 @@ def inicializar_dados():
         
         fig1 = px.line(df1, x="Pacote", y="Vendas", color="Pacote",
                       color_discrete_map={k: v["cor"] for k, v in PACOTES.items()},
-                      markers=True, title="Progressão de Vendas por Pacote")
+                      markers=True)
         fig1.update_traces(line=dict(width=3))
         
         df2 = pd.DataFrame([
@@ -144,8 +156,7 @@ def inicializar_dados():
         ])
         
         fig2 = px.bar(df2, x="Pacote", y="Valor", color="Pacote",
-                     barmode="group", color_discrete_map={k: v["cor"] for k, v in PACOTES.items()},
-                     title="Metas vs Realizado")
+                     barmode="group", color_discrete_map={k: v["cor"] for k, v in PACOTES.items()})
         fig2.update_layout(showlegend=False)
         
         datas = [(datetime.now() - timedelta(days=x)).strftime('%d/%m') for x in range(30)][::-1]
@@ -156,8 +167,7 @@ def inicializar_dados():
             }),
             x="Data",
             y="Faturamento",
-            title="Faturamento dos Últimos 30 Dias",
-            color_discrete_sequence=[CORES["SECUNDARIA"]]
+            color_discrete_sequence=["#e0c083"]
         )
         
         st.session_state.dados = {
@@ -171,21 +181,53 @@ def inicializar_dados():
             'vendas_hoje': random.randint(100, 150),
             'ticket_medio': PACOTES["GOLD"]["preco"],
             'novos_clientes': random.randint(70, 120),
-            'conversao_total': 78.3
+            'conversao_total': 78.3,
+            'tema': "DARK"
         }
 
 # ======================================
 # INTERFACE PRINCIPAL
 # ======================================
 def main():
+    if 'dados' not in st.session_state:
+        inicializar_dados()
+    
+    tema = st.session_state.dados['tema']
+    cores = TEMAS[tema]
+    
+    # CSS Personalizado
     st.markdown(f"""
     <style>
+        :root {{
+            --primaria: {cores['PRIMARIA']};
+            --secundaria: {cores['SECUNDARIA']};
+            --terciaria: {cores['TERCIARIA']};
+            --texto: {cores['TEXTO']};
+            --fundo: {cores['FUNDO']};
+            --cards: {cores['CARDS']};
+            --destaque: {cores['DESTAQUE']};
+            --borda: {cores['BORDA']};
+        }}
+        
+        /* Estilo base */
+        .stApp {{
+            background-color: var(--fundo);
+            color: var(--texto);
+            transition: all 0.3s ease;
+        }}
+        
+        /* Notificações */
         .notificacao {{
-            background: {CORES['CARDS']} !important;
-            border-left: 4px solid {CORES['SECUNDARIA']} !important;
-            border-radius: 8px !important;
-            padding: 12px 16px !important;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2) !important;
+            background: var(--cards) !important;
+            border-left: 4px solid var(--secundaria) !important;
+            border-radius: 10px !important;
+            padding: 14px 18px !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+            transition: all 0.3s ease;
+        }}
+        .notificacao:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.2) !important;
         }}
         .notificacao .stToastMessage {{
             padding: 0 !important;
@@ -193,87 +235,153 @@ def main():
         .notificacao-header {{
             display: flex;
             align-items: center;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
         }}
         .notificacao-logo {{
             width: 24px;
             height: 24px;
-            margin-right: 10px;
-            background-image: url('data:image/png;base64,{LOGO_MINI_BASE64}');
+            margin-right: 12px;
+            background-image: url('data:image/png;base64,{LOGO_CARD_BASE64}');
             background-size: contain;
             background-repeat: no-repeat;
         }}
         .notificacao-tempo {{
             margin-left: auto;
             font-size: 0.8em;
-            color: {CORES['TERCIARIA']};
+            color: var(--terciaria);
+            opacity: 0.8;
         }}
         .notificacao-valor {{
             font-weight: bold;
-            color: {CORES['SECUNDARIA']};
-            margin: 5px 0;
+            font-size: 1.1em;
+            color: var(--secundaria);
+            margin: 8px 0;
         }}
         .notificacao-comissao {{
             font-size: 0.9em;
-            color: {CORES['TERCIARIA']};
+            color: var(--terciaria);
+            opacity: 0.9;
         }}
-        .stApp {{
-            background-color: {CORES['FUNDO']};
-            color: {CORES['TEXTO']};
-        }}
-        .css-1d391kg, .st-emotion-cache-1y4p8pa {{
-            background-color: {CORES['FUNDO']} !important;
-        }}
-        .card-goldpepper {{
-            background: {CORES['CARDS']};
+        
+        /* Cards */
+        .card {{
+            background: var(--cards);
             border-radius: 12px;
             padding: 20px;
             margin-bottom: 20px;
-            border-left: 4px solid {CORES['SECUNDARIA']};
+            border: 1px solid var(--borda);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
             transition: all 0.3s ease;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }}
-        .card-goldpepper:hover {{
+        .card:hover {{
             transform: translateY(-3px);
-            box-shadow: 0 8px 16px rgba(224, 192, 131, 0.2);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.1);
         }}
+        .card-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--borda);
+        }}
+        .card-title {{
+            color: var(--secundaria);
+            font-weight: 600;
+            margin: 0;
+        }}
+        
+        /* Métricas */
         .metric-card {{
-            background: linear-gradient(135deg, {CORES['PRIMARIA']}, #1a2a3b);
-            border-radius: 10px;
-            padding: 15px;
+            background: linear-gradient(135deg, var(--primaria), #1a2a3b);
+            border-radius: 12px;
+            padding: 20px;
             text-align: center;
+            border: 1px solid var(--borda);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
         }}
-        .pulse-gold {{
-            animation: pulse-gold 2s infinite;
+        .metric-card:hover {{
+            transform: translateY(-3px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.1);
         }}
-        @keyframes pulse-gold {{
-            0% {{ box-shadow: 0 0 0 0 rgba(224, 192, 131, 0.4); }}
-            70% {{ box-shadow: 0 0 0 10px rgba(224, 192, 131, 0); }}
-            100% {{ box-shadow: 0 0 0 0 rgba(224, 192, 131, 0); }}
+        .metric-value {{
+            font-size: 1.8em;
+            font-weight: bold;
+            color: var(--secundaria);
+            margin: 10px 0;
         }}
-        @media (max-width: 768px) {{
-            .st-emotion-cache-1y4p8pa {{
-                padding: 1rem !important;
-            }}
-            .metric-card {{
-                margin-bottom: 15px;
-            }}
+        .metric-label {{
+            color: var(--terciaria);
+            font-size: 0.9em;
+            opacity: 0.9;
+        }}
+        
+        /* Sidebar */
+        .sidebar .sidebar-content {{
+            background: var(--cards) !important;
+            border-right: 1px solid var(--borda);
+        }}
+        
+        /* Toggle de tema */
+        .theme-toggle {{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 15px 0;
+        }}
+        .theme-btn {{
+            background: var(--cards) !important;
+            border: 1px solid var(--borda) !important;
+            color: var(--texto) !important;
+            padding: 8px 15px !important;
+            border-radius: 20px !important;
+            font-size: 0.8em !important;
+        }}
+        .theme-btn.active {{
+            background: var(--secundaria) !important;
+            color: var(--primaria) !important;
+            font-weight: bold !important;
+        }}
+        
+        /* Gráficos */
+        .plot-container {{
+            background: var(--cards) !important;
+            border-radius: 12px !important;
+            padding: 15px !important;
+            border: 1px solid var(--borda) !important;
         }}
     </style>
     """, unsafe_allow_html=True)
     
-    inicializar_dados()
+    # Favicon personalizado
+    st.markdown(f"""
+    <link rel="shortcut icon" href="data:image/png;base64,{FAVICON_BASE64}">
+    """, unsafe_allow_html=True)
     
     # Barra lateral
     with st.sidebar:
-        st.image(LOGO_URL, width=200)
         st.markdown(f"""
         <div style="text-align:center; margin-bottom:30px;">
-            <h2 style="color:{CORES['SECUNDARIA']}; margin-bottom:0;">Gold Pepper</h2>
-            <p style="color:{CORES['TERCIARIA']}; margin-top:0;">Business Intelligence</p>
+            <img src="data:image/png;base64,{LOGO_ICONE_BASE64}" style="width:80%; max-width:200px; margin:0 auto 15px; display:block;">
+            <h2 style="color:{cores['SECUNDARIA']}; margin-bottom:5px;">Gold Pepper</h2>
+            <p style="color:{cores['TERCIARIA']}; margin-top:0; font-size:0.9em;">Business Intelligence</p>
         </div>
         """, unsafe_allow_html=True)
         
+        # Toggle de tema
+        st.markdown("### 🌓 Tema")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🌙 Escuro", key="dark_btn", help="Ativar modo escuro"):
+                st.session_state.dados['tema'] = "DARK"
+                st.rerun()
+        with col2:
+            if st.button("☀️ Claro", key="light_btn", help="Ativar modo claro"):
+                st.session_state.dados['tema'] = "LIGHT"
+                st.rerun()
+        
+        st.markdown("---")
         st.markdown("### 🔍 Filtros")
         intervalo = st.select_slider(
             "Período de Análise",
@@ -288,6 +396,8 @@ def main():
             key='velocidade_slider'
         )
         
+        st.markdown("---")
+        st.markdown("### 🎛 Controles")
         col1, col2 = st.columns(2)
         with col1:
             if st.button('⏸️ Pausar' if not st.session_state.dados['pausado'] else '▶️ Continuar',
@@ -302,7 +412,7 @@ def main():
         st.markdown(f"### 🌶️ Metas Mensais")
         for pacote, info in PACOTES.items():
             st.markdown(
-                f"""<div style='color:{info["cor"]}; font-weight:bold; margin: 8px 0; padding: 8px; border-radius: 6px; background-color: rgba(24, 39, 59, 0.3);'>
+                f"""<div style='color:{info["cor"]}; font-weight:bold; margin: 8px 0; padding: 10px; border-radius: 8px; background-color: rgba(24, 39, 59, 0.1); border-left: 4px solid {info["cor"]}'>
                     {pacote}: {info['meta']} assinaturas
                    </div>""",
                 unsafe_allow_html=True
@@ -312,24 +422,28 @@ def main():
         st.markdown(f"### 📊 Conversão Atual")
         for pacote in PACOTES:
             conversao = (st.session_state.dados['vendas_atuais'][pacote] / PACOTES[pacote]["meta"]) * 100
-            cor = CORES["SECUNDARIA"] if conversao >= 100 else "#FF6B6B"
+            cor = cores["SECUNDARIA"] if conversao >= 100 else "#FF6B6B"
             st.markdown(
-                f"""<div style='margin: 8px 0; padding: 8px; border-radius: 6px; background-color: rgba(24, 39, 59, 0.3);'>
-                    <span style='font-weight:bold;'>{pacote}:</span>
-                    <span style='color:{cor}; font-weight:bold;'>{conversao:.1f}%</span>
-                    <progress value='{conversao}' max='100' style='width:100%; height:6px;'></progress>
+                f"""<div style='margin: 8px 0; padding: 10px; border-radius: 8px; background-color: rgba(24, 39, 59, 0.1);'>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                        <span style='font-weight:bold;'>{pacote}:</span>
+                        <span style='color:{cor}; font-weight:bold;'>{conversao:.1f}%</span>
+                    </div>
+                    <progress value='{conversao}' max='100' style='width:100%; height:6px; border:none; background:{cores["BORDA"]};'>
+                        <div style="width:{conversao}%; height:100%; background:{cor};"></div>
+                    </progress>
                    </div>""",
                 unsafe_allow_html=True
             )
 
-    # Cabeçalho principal com logo
+    # Cabeçalho principal
     st.markdown(f"""
-    <div style="display: flex; align-items: center; margin-bottom: 20px;">
-        <img src="{LOGO_URL}" style="height: 28px; margin-right: 10px;">
-        <h1 style="margin: 0; color: {CORES['SECUNDARIA']};">Dashboard de Vendas</h1>
-        <span style="margin-left: auto; color: {CORES['TERCIARIA']}; font-size: 0.9em;">
-            Atualizado em: {datetime.now().strftime('%d/%m/%Y %H:%M')}
-        </span>
+    <div style="display: flex; align-items: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid {cores['BORDA']}">
+        <img src="data:image/png;base64,{LOGO_ICONE_BASE64}" style="height: 40px; margin-right: 15px;">
+        <div>
+            <h1 style="margin: 0; color: {cores['SECUNDARIA']};">Dashboard de Vendas</h1>
+            <p style="margin: 0; color: {cores['TERCIARIA']}; font-size: 0.9em;">Atualizado em: {datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
+        </div>
     </div>
     """, unsafe_allow_html=True)
     
@@ -337,44 +451,44 @@ def main():
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.markdown(f"""
-        <div class="metric-card pulse-gold">
-            <h3 style="color: {CORES['SECUNDARIA']}; margin-top:0;">Faturamento</h3>
-            <h2 style="margin:0;">R$ {FATURAMENTO_MENSAL:,.2f}</h2>
-            <p style="margin-bottom:0; color:{CORES['TERCIARIA']};">+5.2% vs anterior</p>
+        <div class="metric-card">
+            <h3 style="color: {cores['TERCIARIA']}; margin-top:0; font-size:1em;">Faturamento</h3>
+            <div class="metric-value">R$ {FATURAMENTO_MENSAL:,.2f}</div>
+            <p class="metric-label">+5.2% vs anterior</p>
         </div>
         """, unsafe_allow_html=True)
     with col2:
         st.markdown(f"""
         <div class="metric-card">
-            <h3 style="color: {CORES['SECUNDARIA']}; margin-top:0;">Vendas Hoje</h3>
-            <h2 style="margin:0;">{st.session_state.dados['vendas_hoje']}</h2>
-            <p style="margin-bottom:0; color:{CORES['TERCIARIA']};">+{random.randint(3, 8)}% vs ontem</p>
+            <h3 style="color: {cores['TERCIARIA']}; margin-top:0; font-size:1em;">Vendas Hoje</h3>
+            <div class="metric-value">{st.session_state.dados['vendas_hoje']}</div>
+            <p class="metric-label">+{random.randint(3, 8)}% vs ontem</p>
         </div>
         """, unsafe_allow_html=True)
     with col3:
         st.markdown(f"""
         <div class="metric-card">
-            <h3 style="color: {CORES['SECUNDARIA']}; margin-top:0;">Ticket Médio</h3>
-            <h2 style="margin:0;">R$ {st.session_state.dados['ticket_medio']:,.2f}</h2>
-            <p style="margin-bottom:0; color:{CORES['TERCIARIA']};">{random.choice(['+', '-'])}{random.uniform(0.5, 2.5):.1f}% variação</p>
+            <h3 style="color: {cores['TERCIARIA']}; margin-top:0; font-size:1em;">Ticket Médio</h3>
+            <div class="metric-value">R$ {st.session_state.dados['ticket_medio']:,.2f}</div>
+            <p class="metric-label">{random.choice(['+', '-'])}{random.uniform(0.5, 2.5):.1f}% variação</p>
         </div>
         """, unsafe_allow_html=True)
     with col4:
         st.markdown(f"""
         <div class="metric-card">
-            <h3 style="color: {CORES['SECUNDARIA']}; margin-top:0;">Conversão</h3>
-            <h2 style="margin:0;">{st.session_state.dados['conversao_total']:.1f}%</h2>
-            <p style="margin-bottom:0; color:{CORES['TERCIARIA']};">Meta: 85%</p>
+            <h3 style="color: {cores['TERCIARIA']}; margin-top:0; font-size:1em;">Conversão</h3>
+            <div class="metric-value">{st.session_state.dados['conversao_total']:.1f}%</div>
+            <p class="metric-label">Meta: 85%</p>
         </div>
         """, unsafe_allow_html=True)
 
     # Gráficos principais
     st.markdown("---")
-    chart_col1, chart_col2 = st.columns([3, 2])
+    col1, col2 = st.columns([3, 2])
     
     # Containers fixos
-    chart1_placeholder = chart_col1.empty()
-    chart2_placeholder = chart_col2.empty()
+    chart1_placeholder = col1.empty()
+    chart2_placeholder = col2.empty()
     chart3_placeholder = st.empty()
     vendas_placeholder = st.empty()
 
@@ -418,20 +532,21 @@ def main():
                         <div class="notificacao-comissao">Sua comissão: R$ {nova_venda["Comissao"]:,.2f}</div>
                     </div>
                     """,
-                    icon=None  # Removemos o ícone padrão para usar nossa logo
+                    icon=None
                 )
             
-            # Atualizar gráficos (mesmo quando pausado)
+            # Atualizar gráficos
             with chart1_placeholder.container():
                 st.session_state.dados['fig1'].data[0].y = list(st.session_state.dados['vendas_atuais'].values())
                 st.session_state.dados['fig1'].update_layout(
-                    title=f"Progressão de Vendas - {datetime.now().strftime('%H:%M')}",
-                    plot_bgcolor=CORES["CARDS"],
-                    paper_bgcolor=CORES["CARDS"],
-                    font_color=CORES["TEXTO"],
-                    hovermode="x unified"
+                    title="Progressão de Vendas por Pacote",
+                    plot_bgcolor=cores['CARDS'],
+                    paper_bgcolor=cores['CARDS'],
+                    font_color=cores['TEXTO'],
+                    hovermode="x unified",
+                    margin=dict(l=20, r=20, t=40, b=20)
                 )
-                st.plotly_chart(st.session_state.dados['fig1'], use_container_width=True)
+                st.plotly_chart(st.session_state.dados['fig1'], use_container_width=True, config={'displayModeBar': False})
             
             with chart2_placeholder.container():
                 df2 = pd.DataFrame([
@@ -442,56 +557,61 @@ def main():
                 
                 fig2 = px.bar(df2, x="Pacote", y="Valor", color="Pacote",
                              barmode="group", color_discrete_map={k: v["cor"] for k, v in PACOTES.items()},
-                             title=f"Metas vs Realizado - {datetime.now().strftime('%H:%M')}")
+                             title="Metas vs Realizado")
                 fig2.update_layout(
                     showlegend=False,
-                    plot_bgcolor=CORES["CARDS"],
-                    paper_bgcolor=CORES["CARDS"],
-                    font_color=CORES["TEXTO"],
-                    hovermode="x unified"
+                    plot_bgcolor=cores['CARDS'],
+                    paper_bgcolor=cores['CARDS'],
+                    font_color=cores['TEXTO'],
+                    hovermode="x unified",
+                    margin=dict(l=20, r=20, t=40, b=20)
                 )
                 st.session_state.dados['fig2'] = fig2
-                st.plotly_chart(fig2, use_container_width=True)
+                st.plotly_chart(fig2, use_container_width=True, config={'displayModeBar': False})
             
             with chart3_placeholder.container():
                 st.session_state.dados['fig3'].update_layout(
                     title=f"Faturamento Histórico - {st.session_state.get('intervalo_filtro', '30 dias')}",
-                    plot_bgcolor=CORES["CARDS"],
-                    paper_bgcolor=CORES["CARDS"],
-                    font_color=CORES["TEXTO"],
+                    plot_bgcolor=cores['CARDS'],
+                    paper_bgcolor=cores['CARDS'],
+                    font_color=cores['TEXTO'],
                     hovermode="x unified",
+                    margin=dict(l=20, r=20, t=40, b=20),
                     xaxis_title="Data",
                     yaxis_title="Faturamento (R$)"
                 )
-                st.plotly_chart(st.session_state.dados['fig3'], use_container_width=True)
+                st.plotly_chart(st.session_state.dados['fig3'], use_container_width=True, config={'displayModeBar': False})
             
             with vendas_placeholder.container():
                 st.markdown(f"""
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <h3 style="color: {CORES['SECUNDARIA']}; margin:0;">🛒 Últimas Vendas em Tempo Real</h3>
-                    <span style="color: {CORES['TERCIARIA']}; font-size:0.9em;">Atualizado em: {datetime.now().strftime('%H:%M:%S')}</span>
-                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">🛒 Últimas Vendas em Tempo Real</h3>
+                        <span style="color: {cores['TERCIARIA']}; font-size:0.9em;">Atualizado em: {datetime.now().strftime('%H:%M:%S')}</span>
+                    </div>
                 """, unsafe_allow_html=True)
                 
                 for venda in st.session_state.dados['ultimas_vendas']:
                     st.markdown(f"""
-                    <div class="card-goldpepper">
+                    <div style="padding: 15px; margin: 10px 0; border-radius: 8px; background: rgba(24, 39, 59, 0.05); border-left: 3px solid {venda['Cor']}; transition: all 0.3s;">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <div>
-                                <span style="font-weight:bold; font-size:1.1em;">{venda['Nome']}</span>
-                                <span style="color: {CORES['TERCIARIA']}; font-size:0.9em; display:block;">📍 {venda['Local']}</span>
+                                <div style="font-weight:bold; font-size:1.1em; margin-bottom:5px;">{venda['Nome']}</div>
+                                <div style="color: {cores['TERCIARIA']}; font-size:0.9em;">📍 {venda['Local']}</div>
                             </div>
                             <div style="text-align: right;">
-                                <span style="color: {venda['Cor']}; font-weight:bold; font-size:1.1em;">{venda['Pacote']}</span>
-                                <span style="color: {CORES['TEXTO']}; font-weight:bold; font-size:1.1em; display:block;">💵 R$ {venda['Valor']:,.2f}</span>
+                                <div style="color: {venda['Cor']}; font-weight:bold; font-size:1.1em;">{venda['Pacote']}</div>
+                                <div style="font-weight:bold; font-size:1.1em;">💵 R$ {venda['Valor']:,.2f}</div>
                             </div>
                         </div>
-                        <div style="display: flex; justify-content: space-between; margin-top:8px; color: {CORES['TERCIARIA']};">
+                        <div style="display: flex; justify-content: space-between; margin-top:8px; color: {cores['TERCIARIA']}; font-size:0.9em;">
                             <span>⏰ {venda['Hora']}</span>
                             <span>ID: {random.randint(10000, 99999)}</span>
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
+                
+                st.markdown("</div>", unsafe_allow_html=True)
             
             time.sleep(st.session_state.dados['velocidade'])
             
