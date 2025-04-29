@@ -254,9 +254,9 @@ def main():
         st.markdown(f"### 🌶️ Metas Mensais")
         for pacote, info in PACOTES.items():
             st.markdown(
-                f"<div style='color:{info["cor"]}; font-weight:bold; margin: 8px 0; padding: 8px; border-radius: 6px; background-color: rgba(24, 39, 59, 0.3);'>"
-                f"{pacote}: {info['meta']} assinaturas"
-                f"</div>",
+                f"""<div style='color:{info["cor"]}; font-weight:bold; margin: 8px 0; padding: 8px; border-radius: 6px; background-color: rgba(24, 39, 59, 0.3);'>
+                    {pacote}: {info['meta']} assinaturas
+                   </div>""",
                 unsafe_allow_html=True
             )
         
@@ -267,11 +267,11 @@ def main():
             conversao = (st.session_state.dados['vendas_atuais'][pacote] / PACOTES[pacote]["meta"]) * 100
             cor = CORES["SECUNDARIA"] if conversao >= 100 else "#FF6B6B"
             st.markdown(
-                f"<div style='margin: 8px 0; padding: 8px; border-radius: 6px; background-color: rgba(24, 39, 59, 0.3);'>"
-                f"<span style='font-weight:bold;'>{pacote}:</span> "
-                f"<span style='color:{cor}; font-weight:bold;'>{conversao:.1f}%</span> "
-                f"<progress value='{conversao}' max='100' style='width:100%; height:6px;'></progress>"
-                f"</div>",
+                f"""<div style='margin: 8px 0; padding: 8px; border-radius: 6px; background-color: rgba(24, 39, 59, 0.3);'>
+                    <span style='font-weight:bold;'>{pacote}:</span>
+                    <span style='color:{cor}; font-weight:bold;'>{conversao:.1f}%</span>
+                    <progress value='{conversao}' max='100' style='width:100%; height:6px;'></progress>
+                   </div>""",
                 unsafe_allow_html=True
             )
 
@@ -350,7 +350,7 @@ def main():
                 ] or [PACOTES["GOLD"]["preco"]])
                 st.session_state.dados['novos_clientes'] += random.randint(0, 3)
                 st.session_state.dados['conversao_total'] = min(
-                    100, st.session_state.dados['conversao_total'] + random.uniform(-0.2, 0.5)
+                    100, st.session_state.dados['conversao_total'] + random.uniform(-0.2, 0.5))
                 
                 # Gerar nova transação
                 nova_venda = gerar_transacao()
