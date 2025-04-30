@@ -519,7 +519,7 @@ def main():
                 st.session_state.dados['ultimas_vendas'].insert(0, nova_venda)
                 st.session_state.dados['ultimas_vendas'] = st.session_state.dados['ultimas_vendas'][:10]
                 
-                # Notificação de venda no estilo Kiwify/Kirvano
+                # Notificação de venda no estilo Kiwify/Kirvano (CORRIGIDO)
                 st.toast(
                     f"""
                     <div class="notificacao">
@@ -532,7 +532,8 @@ def main():
                         <div class="notificacao-comissao">Sua comissão: R$ {nova_venda["Comissao"]:,.2f}</div>
                     </div>
                     """,
-                    icon=None
+                    icon=None,
+                    unsafe_allow_html=True  # ADICIONADO PARA CORRIGIR O PROBLEMA
                 )
             
             # Atualizar gráficos
