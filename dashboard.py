@@ -10,7 +10,7 @@ from PIL import Image
 import requests
 from io import BytesIO
 import base64
-from streamlit.components.v1 import html as components_html
+import streamlit.components.v1 as components
 
 # ======================================
 # CONFIGURAÇÕES INICIAIS
@@ -111,7 +111,7 @@ PACOTES = {
 FATURAMENTO_MENSAL = 8247358.90
 
 # ======================================
-# SISTEMA DE NOTIFICAÇÕES (SEM PYGAME)
+# SISTEMA DE NOTIFICAÇÕES
 # ======================================
 def show_sale_notification(venda):
     pacote_info = PACOTES[venda['Pacote']]
@@ -188,7 +188,7 @@ def show_sale_notification(venda):
     </div>
     """
     
-    components_html(notification_html, height=150)
+    components.html(notification_html, height=150)
 
 # ======================================
 # FUNÇÕES PRINCIPAIS
@@ -331,8 +331,8 @@ def criar_header(cores):
     <div style="display:flex; align-items:center; margin-bottom:25px; border-bottom:2px solid {cores['TERCIARIA']}; padding-bottom:15px;">
         <img src="data:image/png;base64,{LOGO_ICONE_BASE64}" style="height:50px; margin-right:20px;">
         <div style="flex-grow:1;">
-            <h1 style="margin:0; color:{cores['TERCIARIA'};">GOLD PEPPER BUSINESS</h1>
-            <p style="margin:0; color:{cores['SECUNDARIA'};">Atualizado em: {datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
+            <h1 style="margin:0; color:{cores['TERCIARIA']};">GOLD PEPPER BUSINESS</h1>
+            <p style="margin:0; color:{cores['SECUNDARIA']};">Atualizado em: {datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -342,8 +342,8 @@ def criar_sidebar(cores):
         st.markdown(f"""
         <div style="text-align:center; margin-bottom:30px;">
             <img src="data:image/png;base64,{LOGO_ICONE_BASE64}" style="width:80%; max-width:200px; margin:0 auto 15px; display:block;">
-            <h2 style="color:{cores['TERCIARIA'};">GOLD PEPPER</h2>
-            <p style="color:{cores['SECUNDARIA'};">Business Intelligence</p>
+            <h2 style="color:{cores['TERCIARIA']};">GOLD PEPPER</h2>
+            <p style="color:{cores['SECUNDARIA']};">Business Intelligence</p>
         </div>
         """, unsafe_allow_html=True)
         
